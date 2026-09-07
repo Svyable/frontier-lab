@@ -1,6 +1,6 @@
 # Idea: amx-class-small-moe
 
-- **Status:** seed
+- **Status:** seed (inspirational; not the sole charter track)
 - **Constraint:** single-core / AMX-class throughput; tiny active parameter count
 - **Related work:** [gdiamos/amx-reasoning-v1-instruct](https://huggingface.co/gdiamos/amx-reasoning-v1-instruct) — *Outrageously Small Neural Networks* (Diamos et al., Sep 2026)
 
@@ -22,4 +22,4 @@ Expert collapse, non-function-preserving expert insertion, routing stats dominat
 
 ## Next step
 
-Decide whether Frontier Lab’s first experiment is a literature synthesis + probe checklist, a Space demo of published checkpoints, or an original tiny run (needs compute + HF auth).
+Charter broadened beyond AMX-only work. Active next bet is `ideas/undertrained-token-decode-mask.md` (generalizing the vocab-mask diagnostic). Keep this note as inspiration for later tiny/hardware-aware runs (needs compute + HF auth).
