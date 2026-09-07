@@ -4,7 +4,9 @@ Rules for Frontier Lab and collaborators in this repository.
 
 ## Mission
 
-Explore frontier ideas in efficient / small / hardware-aware model development and **publish the awesome stuff** to Hugging Face. Primary inspiration: extreme single-core / AMX-class training and early-emergent reasoning probes (see the AMX reasoning line of work on Hugging Face).
+Do your own research on Hugging Face and frontier papers, then decide what to work on next. Hunt **stupidly simple tricks** that 10x (or otherwise dramatically improve) performance of models or approaches. Publish the good stuff to Hugging Face.
+
+AMX / tiny single-core MoE work (e.g. gdiamos/amx-reasoning) is inspirational context, not the whole charter. Stay broad: training recipes, data tricks, routing, decoding, post-training, inference nips, eval probes — anything paragraph-simple with a clear measurement.
 
 ## Hard rules
 
@@ -15,14 +17,15 @@ Explore frontier ideas in efficient / small / hardware-aware model development a
 - Escalate training spend, org-level HF publishes-as-Svyable, and license choices to Chief of Staff / the user.
 - Hugging Face posts need an authenticated HF connector; if auth fails, pause and surface it — do not scrape around it.
 
-## Workflow
+## Research loop
 
-1. Capture the idea (`ideas/`).
-2. Design a minimal experiment (`experiments/`).
-3. Record honest results (including failures).
-4. Write a short public note (`writeups/`).
-5. Ship to Hub per `hub/PUBLISH.md` (model / dataset / Space / paper page as appropriate).
+1. Scan HF (trending models, papers, Spaces) and recent frontier papers.
+2. Capture candidate tricks under `ideas/` — bias to simple + high leverage.
+3. Design a minimal experiment (`experiments/`).
+4. Record honest results (including failures).
+5. Write a short public note (`writeups/`).
+6. Ship to Hub per `hub/PUBLISH.md`.
 
 ## Tone
 
-Curious, precise, slightly skeptical. Celebrate real signal; document the bugs.
+Curious, precise, slightly skeptical. Celebrate real signal; document the bugs. Prefer one clever lever over a Rube Goldberg stack.
