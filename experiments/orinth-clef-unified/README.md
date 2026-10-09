@@ -237,6 +237,17 @@ maintenance, cold start and model loading are excluded.
 The path is included as optional source in the local Hugging Face-style
 MLX bundle, not substituted for the learned Qwen checkpoint.
 
+## Phase 9 — selective cascade negative result
+
+[Phase 9 experiment](docs/PHASE9-SELECTIVE-CASCADE.md):
+a one-prefill micro-head with a raw-margin gate and DecisionLens
+fallback was tested on 32 previously inspected author-rule cases.
+It achieved only **21/32** complete-case matches at **424 ms**
+median, versus **26/32** at **271 ms** for DecisionLens alone.
+A serial fallback pays for two backbone passes and is rejected as
+a default. The code remains as a reproducible **negative result**.
+Raw margins are not calibrated confidence.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.

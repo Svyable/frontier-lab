@@ -25,7 +25,7 @@ SOURCE_FILES = (
     "rollback_stress.py", "prompt_benchmark.py",
     "direct_classifier.py", "direct_benchmark.py",
     "compact_benchmark.py", "compact_stress.py",
-    "proofroute.py", "proofroute_benchmark.py"
+    "proofroute.py", "proofroute_benchmark.py", "selective_cascade.py"
 )
 CARD = """---
 language:
