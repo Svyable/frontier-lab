@@ -1,0 +1,23 @@
+name: Orinth Clef bootstrap tests
+on:
+  pull_request:
+    paths:
+      - "experiments/orinth-clef-unified/**"
+      - ".github/workflows/orinth-clef-bootstrap.yml"
+  push:
+    paths:
+      - "experiments/orinth-clef-unified/**"
+      - ".github/workflows/orinth-clef-bootstrap.yml"
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: experiments/orinth-clef-unified
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -v
+      - run: python -m compileall -q orinth_clef tests
