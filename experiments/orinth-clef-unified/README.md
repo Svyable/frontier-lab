@@ -83,6 +83,20 @@ After training, run:
 
 The local ignored report is written to `runs/qwen3-4b-smoke/eval.json`. It explicitly distinguishes schema validity and **teacher pseudo-label** agreement from independent task accuracy. Strict parsing never repairs malformed model output.
 
+## Phase 2 — larger reproducible synthetic benchmark
+
+See [Phase 2 method](docs/PHASE2-METHOD.md) and [measured M4 results](docs/PHASE2-M4-RESULTS.md).
+The new dataset generator produces 120 synthetic cases from 30 scenario families with
+four phrasings per family; family-held-out splits are 96 train / 12 validation /
+12 test. Resumable teacher capture pins the same model revision and validates
+previously collected rows. The teacher's decision probabilities remain in raw
+local files, while MLX SFT exports use pseudo-labels only.
+
+Run `python3 -m orinth_clef.build_cases` then follow the Phase 2 method.
+The evaluator supports `--no-adapter` for a true base-model control. Neither
+teacher agreement nor comparison with synthetic construction intents constitutes
+independently validated accuracy.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.

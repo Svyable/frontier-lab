@@ -42,7 +42,7 @@ def parse_student_output(raw: str, questions: dict) -> dict:
 def evaluate_student(
     *,
     model_path: str,
-    adapter_path: str,
+    adapter_path: str | None,
     data_dir: Path,
     splits: tuple[str, ...] = ("valid", "test"),
     max_tokens: int = 128,
@@ -112,24 +112,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate MLX student typed decisions")
     parser.add_argument("--model", default="models/qwen3-4b-4bit")
     parser.add_argument("--adapter", default="runs/qwen3-4b-smoke")
+    parser.add_argument("--no-adapter", action="store_true", help="Evaluate unadapted base Qwen")
     parser.add_argument("--data", type=Path, default=Path("data/mlx"))
     parser.add_argument("--splits", nargs="+", choices=["train", "valid", "test"], default=["valid", "test"])
     parser.add_argument("--max-tokens", type=int, default=128)
-    parser.add_argument("--output", type=Path, default=Path("runs/qwen3-4b-smoke/eval.json"))
+    parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args()
     if not 1 <= args.max_tokens <= 1024:
         parser.error("--max-tokens must be in [1,1024]")
     report = evaluate_student(
         model_path=args.model,
-        adapter_path=args.adapter,
+        adapter_path=None if args.no_adapter else args.adapter,
         data_dir=args.data,
         splits=tuple(args.splits),
         max_tokens=args.max_tokens,
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    output = args.output or Path("runs/qwen3-4b-smoke/eval-base.json" if args.no_adapter else "runs/qwen3-4b-smoke/eval.json")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps({key: value for key, value in report.items() if key != "observations"}, indent=2))
-    print(f"Saved detailed predictions to {args.output}")
+    print(f"Saved detailed predictions to {output}")
     return 0
 
 
