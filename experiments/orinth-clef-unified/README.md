@@ -124,6 +124,25 @@ The ~1 KiB **thin manifest** is a content-addressed overlay referencing
 1 KiB model. Normalized candidate token scores are not calibrated
 probabilities. Arbitrary multi-token choice IDs are not yet supported.
 
+## Phase 4 — One-pass micro-head (experimental)
+
+See [M4 micro-head benchmark](docs/PHASE4-EXPERIMENT.md).
+A frozen fused 4-bit Qwen backbone encodes the entire task in one pass.
+A separately trained ~960 KiB question-conditioned head scores the choices.
+On the same 24 synthetic held-out cases, the 24-epoch head produced 24/24
+schema-valid responses and 16/24 teacher pseudo-label matches at ~0.186s
+median end-to-end, compared with 17/24 and 0.2789s for DecisionLens.
+The head is ~1.5x faster on this workload but has lower agreement;
+**do not treat it as a quality-approved replacement or standalone model**.
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.micro_head \
+  --model models/qwen3-4b-60iter-4bit --data data/mlx_120 \
+  --rank 32 --epochs 24 \
+  --output runs/phase4/micro-head-24.json \
+  --head-weights runs/phase4/micro-head-24.safetensors
+~~~
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
