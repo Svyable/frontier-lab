@@ -55,6 +55,26 @@ def _policy(case):
     return policy
 
 
+def direct_python(case):
+    """Conventional hand-written Python baseline, same explicit rules."""
+    s = case["task"]["state"]
+    family = case["family"]
+    if family == "library":
+        return {"charge": "fine_required" if s["days_overdue"] > 0 else "no_fine",
+                "block_renewal": s["renewal_count"] >= 3}
+    if family == "vehicle":
+        return {"status": "maintenance_due" if s["tire_depth_mm"] < 3 or s["engine_check"]
+                else "roadworthy", "danger": s["tire_depth_mm"] < 2}
+    if family == "access":
+        return {"decision": "access_granted" if s["badge_active"] and
+                s["clearance"] >= s["required"] else "access_denied",
+                "escalate": s["clearance"] == 0}
+    if family == "shipment":
+        return {"handling": "special_handling" if s["fragile"] or s["weight_kg"] > 20
+                else "standard_handling", "long_haul": s["distance_km"] >= 500}
+    raise ValueError("unsupported family")
+
+
 def run(fixture, model_path, rounds):
     from mlx_lm import load
     from .decision_lens import decide as neural_decide
@@ -65,7 +85,7 @@ def run(fixture, model_path, rounds):
         for i, case in enumerate(cases):
             task, expected = case["task"], case["gold"]
             policy = _policy(case)
-            paths = ("neural", "rule") if (repeat + i) % 2 else ("rule", "neural")
+            paths = ("neural", "rule", "python") if (repeat + i) % 2 else ("python", "rule", "neural")
             outputs = {}
             for name in paths:
                 start = time.perf_counter()
@@ -75,6 +95,9 @@ def run(fixture, model_path, rounds):
                     else:
                         answer = execute(compile_policy(task, policy), task["state"])
                         route = "verified_rule"
+                elif name == "python":
+                    answer = direct_python(case)
+                    route = "hand_written_python"
                 else:
                     answer, _ = neural_decide(model, tokenizer, task,
                                               sequence_scorer="trie",
@@ -91,6 +114,8 @@ def run(fixture, model_path, rounds):
         "rule_coverage": sum(r["rule"]["route"] == "verified_rule" for r in rows),
         "rule_exact": sum(r["rule"]["exact"] for r in rows),
         "neural_exact": sum(r["neural"]["exact"] for r in rows),
+        "python_exact": sum(r["python"]["exact"] for r in rows),
+        "python_median_seconds": statistics.median(r["python"]["seconds"] for r in rows),
         "rule_median_seconds": statistics.median(r["rule"]["seconds"] for r in rows),
         "neural_median_seconds": statistics.median(r["neural"]["seconds"] for r in rows),
         "rows": rows

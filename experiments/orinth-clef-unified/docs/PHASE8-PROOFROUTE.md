@@ -48,11 +48,14 @@ real-world rule maintenance**.
 
 | Path | Complete exact | Median per case |
 |---|---:|---:|
-| Explicit policy, validate + compile + execute | **64/64** | **0.01346 ms** |
-| DecisionLens trie, short system prompt | 52/64 | 270.41 ms |
+| Hand-written Python rules | **64/64** | **0.00071 ms** |
+| Explicit policy, validate + compile + execute | **64/64** | **0.01321 ms** |
+| DecisionLens trie, short system prompt | 52/64 | 270.10 ms |
 
 The measured policy fast path is about **20,000x** faster per
-rule-covered case, but **this is not a faster neural model**. It
+rule-covered case than the always-on neural model, but about
+**19x slower than straightforward hand-written Python** on these
+microsecond-scale measurements. This is **not a faster neural model**. It
 is a deterministic rule engine executing a rule already supplied
 by the caller. Both timings exclude cold model loading, and the
 policy timing excludes human rule creation, audit and maintenance.

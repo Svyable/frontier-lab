@@ -81,6 +81,17 @@ class ProofRouteTests(unittest.TestCase):
         with self.assertRaisesRegex(SchemaError, "complexity"):
             compile_policy(self.task, policy)
 
+    def test_all_fixture_policies_match_direct_python(self):
+        from pathlib import Path
+        from orinth_clef.challenge import read_challenges
+        from orinth_clef.proofroute_benchmark import POLICIES, direct_python
+        fixture = Path(__file__).resolve().parents[1] / "examples" / "holdout_rules_v1.jsonl"
+        for case in read_challenges(fixture):
+            got, route = decide(case["task"], POLICIES[case["family"]])
+            self.assertEqual(route, "verified_rule")
+            self.assertEqual(got, direct_python(case))
+            self.assertEqual(got, case["gold"])
+
     def test_200_boundary_and_randomized_oracle_cases(self):
         import random
         from orinth_clef.proofroute_benchmark import POLICIES
