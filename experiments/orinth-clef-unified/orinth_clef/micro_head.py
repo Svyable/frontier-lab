@@ -169,6 +169,24 @@ def decide(head, model, tokenizer, task):
     return decisions
 
 
+def decide_with_margins(head, model, tokenizer, task):
+    """One backbone prefill; raw top-two logit margins, NOT probabilities."""
+    import mlx.core as mx
+    hidden, entries = features(model, tokenizer, task)
+    decisions, margins = {}, {}
+    for qid, options, query, vectors in entries:
+        logits = head(hidden, query, vectors)
+        mx.eval(logits)
+        scores = [float(x) for x in logits.tolist()]
+        if not all(math.isfinite(s) for s in scores):
+            raise SchemaError("nonfinite micro-head scores")
+        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+        decisions[qid] = options[ranked[0]]
+        margins[qid] = scores[ranked[0]] - scores[ranked[1]]
+    parse_student_output(json.dumps({"decisions": decisions}), task["questions"])
+    return decisions, margins
+
+
 def evaluate(head, model, tokenizer, partitions, splits=("valid", "test")):
     result = {}
     for split in splits:
