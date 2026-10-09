@@ -122,7 +122,8 @@ python3 -m orinth_clef.package_lens --verify
 The ~1 KiB **thin manifest** is a content-addressed overlay referencing
 **separately installed ~2.1 GiB model weights**; it is not a standalone
 1 KiB model. Normalized candidate token scores are not calibrated
-probabilities. Arbitrary multi-token choice IDs are not yet supported.
+probabilities. Multi-token choice IDs are supported experimentally via
+KV-cached candidate-sequence scoring (see Phase 5 below).
 
 ## Phase 4 — One-pass micro-head (experimental)
 
@@ -141,6 +142,24 @@ The head is ~1.5x faster on this workload but has lower agreement;
   --rank 32 --epochs 24 \
   --output runs/phase4/micro-head-24.json \
   --head-weights runs/phase4/micro-head-24.safetensors
+~~~
+
+## Phase 5 — Multi-token constrained decisions
+
+See [rule-labeled M4 challenge report](docs/PHASE5-CHALLENGE.md).
+DecisionLens now supports multi-token choice IDs by teacher-forcing
+candidate continuations against cloned MLX KV caches, rather than
+generating arbitrary text. On 24 new author-labeled deterministic-rule
+diagnostics, schema validity improved from **12/24 to 24/24** and exact
+complete-case rule agreement from **11/24 to 21/24**. The 24-epoch
+micro-head reached 7/24 on the same diagnostics, exposing weak
+out-of-domain generalization. The multi-token path costs additional
+compute; it is not a speedup claim.
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.challenge \
+  --fixture examples/challenge_rules.jsonl \
+  --output runs/phase5/challenge-sequences.json
 ~~~
 
 ## Release gates
