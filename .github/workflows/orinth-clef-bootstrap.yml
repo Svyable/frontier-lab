@@ -21,3 +21,4 @@ jobs:
           python-version: "3.12"
       - run: python -m unittest discover -v
       - run: python -m compileall -q orinth_clef tests
+      - run: bash -n scripts/mac_bootstrap.sh
