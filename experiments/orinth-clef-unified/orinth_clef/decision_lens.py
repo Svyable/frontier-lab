@@ -1,8 +1,9 @@
 """DecisionLens: schema-native logit selection without autoregressive JSON.
 
-Research prototype. One forward pass per question; candidate values must have
-distinct single-token representations in the current tokenizer. The normalized
-choice logits are NOT calibrated event probabilities. No external services.
+Research prototype. A shared KV cache advances one question at a time.
+Multi-token candidates are teacher-forced along separate prefix-cache branches.
+Normalized candidate scores are NOT calibrated event probabilities.
+No external services.
 """
 import argparse
 import json
@@ -19,8 +20,8 @@ from .schema import SchemaError, validate_request
 def candidate_values(question: dict) -> list[str | bool]:
     if question["type"] == "choice":
         options = sorted(question["criteria"])
-        if not options or len(options) > 32:
-            raise SchemaError("choice requires 1-32 options")
+        if not 2 <= len(options) <= 50:
+            raise SchemaError("choice requires 2-50 options")
         return options
     if question["type"] == "noul":
         return [False, True]
@@ -56,9 +57,10 @@ def select_from_logits(candidate_ids: dict, scores: list[float]) -> tuple:
 
 
 def decide(model, tokenizer, task: dict) -> tuple[dict, dict]:
-    """Choose each value from a single next-token logit vector, no text generation."""
+    """Select typed candidates with KV-cached, constrained token scoring."""
     import mlx.core as mx
     from mlx_lm.models.cache import make_prompt_cache
+    from .candidate_sequences import candidate_sequences, score_sequences
 
     validate_request({"model": "clef-flash", **task})
     questions = task["questions"]
@@ -85,21 +87,25 @@ def decide(model, tokenizer, task: dict) -> tuple[dict, dict]:
     score_distributions = {}
     for index, qid in enumerate(ordered):
         question = questions[qid]
-        candidates = candidate_token_ids(tokenizer, question)
+        sequences = candidate_sequences(tokenizer, question)
         logits = model(mx.array([tokens]), cache=cache)[0, -1, :]
         mx.eval(logits)
-        raw_scores = [float(logits[token_id].item()) for token_id in candidates.values()]
-        answer, distribution = select_from_logits(candidates, raw_scores)
+        if all(len(ids) == 1 for ids in sequences.values()):
+            # Keep the fast, previously benchmarked single-token path.
+            raw_scores = [float(logits[ids[0]].item()) for ids in sequences.values()]
+            answer, distribution = select_from_logits(sequences, raw_scores)
+        else:
+            # Multi-token options are scored on separate copies of the same
+            # prefix cache; only the chosen continuation advances the base.
+            answer, distribution = score_sequences(model, cache, logits, sequences)
         answers[qid] = answer
         score_distributions[qid] = distribution
         if index + 1 < len(ordered):
             next_qid = ordered[index + 1]
-            # The candidate's exact token is already known. Append it to the
-            # cache alongside the JSON separator and the next field prefix.
             tail = ('"' if isinstance(answer, str) else '') + ', ' + json.dumps(next_qid) + ': '
             if questions[next_qid]["type"] == "choice":
                 tail += '"'
-            tokens = [candidates[answer]] + tokenizer.encode(tail, add_special_tokens=False)
+            tokens = sequences[answer] + tokenizer.encode(tail, add_special_tokens=False)
     payload = '{"decisions": ' + json.dumps(answers, sort_keys=True) + '}'
     parse_student_output(payload, questions)
     return answers, score_distributions
@@ -133,7 +139,7 @@ def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
             "split": split, "index": index, "schema_valid": valid,
             "teacher_pseudolabel_exact_match": valid and decisions == expected,
             "seconds": round(elapsed, 4), "error": error,
-            "decisions": decisions, "normalized_token_scores_not_calibrated": distributions,
+            "decisions": decisions, "normalized_candidate_scores_not_calibrated": distributions,
             "teacher_pseudolabels": expected,
         })
     return {
