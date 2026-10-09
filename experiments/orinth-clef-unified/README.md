@@ -162,6 +162,25 @@ compute; it is not a speedup claim.
   --output runs/phase5/challenge-sequences.json
 ~~~
 
+## Phase 6 — Prefix-trie candidate scorer (opt-in)
+
+See [measured M4 trie benchmark](docs/PHASE6-TRIE.md).
+The candidate-sequence scorer can share token prefixes and KV-cache
+continuations between allowed choice IDs. On a synthetic 32-option
+shared-prefix task, warm M4 median latency fell from **1.963s to
+0.984s (~1.99x)**; on the 24-case mixed diagnostic, the change was
+only ~1.04x. Paired decisions agreed on those tested workloads, with
+small nonzero numerical score drift. The original scorer remains the
+default pending broader validation.
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.trie_benchmark --rounds 2
+.venv-student/bin/python -m orinth_clef.prefix_stress --options 32 --rounds 3
+.venv-student/bin/python -m orinth_clef.decision_lens \
+  --model models/qwen3-4b-60iter-4bit --no-adapter \
+  --sequence-scorer trie --output runs/phase6/teacher-regression-trie.json
+~~~
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.

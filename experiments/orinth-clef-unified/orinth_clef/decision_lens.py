@@ -56,11 +56,15 @@ def select_from_logits(candidate_ids: dict, scores: list[float]) -> tuple:
     return labels[winner], {str(labels[i]): weights[i] / total for i in range(len(labels))}
 
 
-def decide(model, tokenizer, task: dict) -> tuple[dict, dict]:
+def decide(model, tokenizer, task: dict, *, sequence_scorer="reference") -> tuple[dict, dict]:
     """Select typed candidates with KV-cached, constrained token scoring."""
     import mlx.core as mx
     from mlx_lm.models.cache import make_prompt_cache
     from .candidate_sequences import candidate_sequences, score_sequences
+    if sequence_scorer not in ("reference", "trie"):
+        raise SchemaError("unsupported sequence scorer")
+    if sequence_scorer == "trie":
+        from .prefix_trie import score_sequences_trie
 
     validate_request({"model": "clef-flash", **task})
     questions = task["questions"]
@@ -97,7 +101,8 @@ def decide(model, tokenizer, task: dict) -> tuple[dict, dict]:
         else:
             # Multi-token options are scored on separate copies of the same
             # prefix cache; only the chosen continuation advances the base.
-            answer, distribution = score_sequences(model, cache, logits, sequences)
+            scorer = score_sequences if sequence_scorer == "reference" else score_sequences_trie
+            answer, distribution = scorer(model, cache, logits, sequences)
         answers[qid] = answer
         score_distributions[qid] = distribution
         if index + 1 < len(ordered):
@@ -112,7 +117,8 @@ def decide(model, tokenizer, task: dict) -> tuple[dict, dict]:
 
 
 def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
-             splits: tuple[str, ...] = ("valid", "test")) -> dict:
+             splits: tuple[str, ...] = ("valid", "test"),
+             sequence_scorer: str = "reference") -> dict:
     from mlx_lm import load
 
     cases = []
@@ -130,7 +136,7 @@ def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
     for split, index, task, expected in cases:
         start = time.perf_counter()
         try:
-            decisions, distributions = decide(model, tokenizer, task)
+            decisions, distributions = decide(model, tokenizer, task, sequence_scorer=sequence_scorer)
             valid, error = True, None
         except SchemaError as exc:
             decisions, distributions, valid, error = None, None, False, str(exc)
@@ -145,6 +151,7 @@ def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
     return {
         "evaluation_kind": "decision_lens_token_logit_selection_not_calibrated_not_accuracy",
         "model_path": model_path, "adapter_path": adapter_path,
+        "sequence_scorer": sequence_scorer,
         "splits": list(splits), "count": len(observations),
         "schema_valid_count": sum(x["schema_valid"] for x in observations),
         "teacher_pseudolabel_agreement_count": sum(x["teacher_pseudolabel_exact_match"] for x in observations),
@@ -158,12 +165,14 @@ def main() -> None:
     p.add_argument("--model", default="models/qwen3-4b-4bit")
     p.add_argument("--adapter", default="runs/phase2/qwen3-4b-60iter")
     p.add_argument("--no-adapter", action="store_true")
+    p.add_argument("--sequence-scorer", choices=("reference", "trie"), default="reference")
     p.add_argument("--data", type=Path, default=Path("data/mlx_120"))
     p.add_argument("--splits", nargs="+", choices=["valid", "test", "train"], default=["valid", "test"])
     p.add_argument("--output", type=Path, default=Path("runs/phase3/decision-lens.json"))
     args = p.parse_args()
     report = evaluate(model_path=args.model, adapter_path=None if args.no_adapter else args.adapter,
-                      data_dir=args.data, splits=tuple(args.splits))
+                      data_dir=args.data, splits=tuple(args.splits),
+                      sequence_scorer=args.sequence_scorer)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "observations"}, indent=2))
