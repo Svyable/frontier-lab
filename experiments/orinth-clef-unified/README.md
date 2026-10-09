@@ -248,6 +248,24 @@ A serial fallback pays for two backbone passes and is rejected as
 a default. The code remains as a reproducible **negative result**.
 Raw margins are not calibrated confidence.
 
+## Phase 10 — shared-backbone early exit (experimental)
+
+[Phase 10 research report](docs/PHASE10-EARLY-EXIT.md):
+a separately trained intermediate-layer head can accept decisions
+after 24/36 Qwen3 layers, or continue the **same** hidden state
+through the remaining layers without a second prefill. A numerical
+M4 check found zero hidden-state difference between a full pass
+and an 18-layer prefix plus continuation.
+
+In three paired warm M4 rounds on 12 **previously inspected**
+pseudo-label cases, the depth-24 exit matched the full micro-head's
+21/36 teacher labels. Mean latency was **168 vs 189 ms** (~11%
+less), but median latency did not improve (**189 vs 188 ms**).
+Only four distinct tasks exited early. This is not independent
+accuracy, calibration, a general speedup or SOTA. The optional
+early-head checkpoint and configuration are supported by the
+Hugging Face-style research export; no public upload is authorized.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.

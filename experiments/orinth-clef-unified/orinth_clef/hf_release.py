@@ -6,6 +6,7 @@ Clef-derived training data. Manifest verifies every included file.
 import argparse
 import hashlib
 import json
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,7 +26,8 @@ SOURCE_FILES = (
     "rollback_stress.py", "prompt_benchmark.py",
     "direct_classifier.py", "direct_benchmark.py",
     "compact_benchmark.py", "compact_stress.py",
-    "proofroute.py", "proofroute_benchmark.py", "selective_cascade.py"
+    "proofroute.py", "proofroute_benchmark.py", "selective_cascade.py",
+    "early_exit.py", "early_exit_benchmark.py"
 )
 CARD = """---
 language:
@@ -118,6 +120,18 @@ The optional `micro-head-experimental.safetensors` is a separate
 and has substantially weaker out-of-domain decision accuracy; it is
 **not** the recommended default.
 
+An optional `early-head-experimental.safetensors` and
+`early-exit-experimental.json` provide a **separate** depth-24
+experimental head and validation-derived, uncalibrated threshold.
+`orinth_clef.early_exit.decide` reuses the same Qwen3 intermediate
+activations for final-layer continuation, avoiding a second prefill.
+On 12 previously inspected pseudo-label cases (three paired rounds),
+the exit matched the full micro-head's 21/36 teacher labels,
+with ~168 ms vs ~189 ms mean latency but no median improvement.
+**Do not infer calibrated confidence, external accuracy or SOTA.**
+This path requires the full backbone, the original final micro-head
+and the early head together; it is not enabled by default.
+
 ## Evaluation evidence
 
 - 24 synthetic Clef pseudo-label tasks (previously inspected):
@@ -201,7 +215,8 @@ def sha256(path):
     return h.hexdigest()
 
 
-def export(source, model_dir, output, include_weights, head_path=None):
+def export(source, model_dir, output, include_weights, head_path=None,
+           early_head_path=None, early_report_path=None):
     source, model_dir, output = Path(source), Path(model_dir), Path(output)
     if output.exists() and any(output.iterdir()):
         raise SchemaError("output directory must be empty; refuse overwrite")
@@ -213,6 +228,21 @@ def export(source, model_dir, output, include_weights, head_path=None):
             raise SchemaError(f"missing runtime file: {name}")
     if head_path is not None and not Path(head_path).is_file():
         raise SchemaError("missing micro-head weights")
+    if (early_head_path is None) != (early_report_path is None):
+        raise SchemaError("early-head weights and report must be provided together")
+    if early_head_path is not None:
+        if not Path(early_head_path).is_file() or not Path(early_report_path).is_file():
+            raise SchemaError("missing early-exit weights or report")
+        early_config = json.loads(Path(early_report_path).read_text())
+        if (early_config.get("total_layers") != 36 or
+                type(early_config.get("depth")) is not int or
+                not 1 <= early_config["depth"] < 36 or
+                early_config.get("rank") != 32 or
+                type(early_config.get("threshold")) not in (int, float) or
+                not math.isfinite(early_config["threshold"]) or
+                early_config["threshold"] < 0 or
+                early_config.get("threshold_selection") != "validation_only_empirical_not_calibrated"):
+            raise SchemaError("invalid early-exit metadata")
     output.mkdir(parents=True, exist_ok=True)
     for name in MODEL_FILES:
         if name == "model.safetensors" and not include_weights:
@@ -232,6 +262,13 @@ def export(source, model_dir, output, include_weights, head_path=None):
             shutil.copy2(fixture, output / fixture_name)
     if head_path is not None:
         shutil.copy2(head_path, output / "micro-head-experimental.safetensors")
+    if early_head_path is not None:
+        shutil.copy2(early_head_path, output / "early-head-experimental.safetensors")
+        safe_keys = ("depth", "total_layers", "rank", "epochs", "threshold",
+                     "threshold_selection", "target_validation_agreement",
+                     "dataset_sha256", "evaluation_kind")
+        (output / "early-exit-experimental.json").write_text(
+            json.dumps({k: early_config[k] for k in safe_keys}, indent=2) + "\n")
     training_config = source / "runs" / "phase2" / "qwen3-4b-60iter" / "adapter_config.json"
     if training_config.is_file():
         shutil.copy2(training_config, output / "training_config.json")
@@ -251,6 +288,7 @@ def export(source, model_dir, output, include_weights, head_path=None):
         "distribution_rights_review_required": True,
         "independent_gold_benchmark_available": False,
         "micro_head_included": head_path is not None,
+        "early_head_included": early_head_path is not None,
     }
     data = source / "data" / "mlx_120" / "train.jsonl"
     if data.exists():
@@ -323,11 +361,14 @@ def main():
     make.add_argument("--output", type=Path, required=True)
     make.add_argument("--include-weights", action="store_true")
     make.add_argument("--head", type=Path)
+    make.add_argument("--early-head", type=Path)
+    make.add_argument("--early-report", type=Path)
     check = sub.add_parser("verify")
     check.add_argument("--directory", type=Path, required=True)
     args = p.parse_args()
     result = (export(args.source, args.model_dir, args.output,
-                     args.include_weights, args.head)
+                     args.include_weights, args.head,
+                     args.early_head, args.early_report)
               if args.command == "export" else verify(args.directory))
     print(json.dumps(result, indent=2))
 
