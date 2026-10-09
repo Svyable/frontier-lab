@@ -129,6 +129,8 @@ On 12 previously inspected pseudo-label cases (three paired rounds),
 the exit matched the full micro-head's 21/36 teacher labels,
 with ~168 ms vs ~189 ms mean latency but no median improvement.
 **Do not infer calibrated confidence, external accuracy or SOTA.**
+A packaged-model smoke test incorrectly answered a simple
+`severity >= 4` Boolean at `severity=4` (returned false).
 This path requires the full backbone, the original final micro-head
 and the early head together; it is not enabled by default.
 
