@@ -266,6 +266,27 @@ accuracy, calibration, a general speedup or SOTA. The optional
 early-head checkpoint and configuration are supported by the
 Hugging Face-style research export; no public upload is authorized.
 
+## Phase 11 — executable-rule oracle, frozen before evaluation
+
+[Phase 11 report](docs/PHASE11-ORACLE-BENCHMARK.md) and committed
+[64-case seeded oracle fixture](examples/oracle_rules_v2.jsonl):
+four families, two typed questions each, exact labels computed from
+explicit policies (not a teacher model). The fixture was committed
+before neural evaluation, but remains author-programmed, not
+independently human-adjudicated.
+
+On the Apple M4, DecisionLens correctly handled **55/64** tasks
+(234 ms median), the full micro-head **40/64** (186 ms), and the
+depth-24 early exit **40/64** (125 ms). The early head accepted
+**all 64**, including **24 incorrect** answers. Its margin gate
+is demonstrably unreliable under this shift. The symbolic
+interpreter scored 64/64 at 0.016 ms median **because it was given
+the exact executable policies**, unlike the neural runtimes.
+
+This is a serious accuracy/abstention failure for the early head,
+not a speed breakthrough. Keep DecisionLens as the neural default
+and do not tune to this now-observed test set.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
