@@ -24,7 +24,8 @@ SOURCE_FILES = (
     "hf_benchmark.py", "rollback_trie.py", "rollback_benchmark.py",
     "rollback_stress.py", "prompt_benchmark.py",
     "direct_classifier.py", "direct_benchmark.py",
-    "compact_benchmark.py", "compact_stress.py"
+    "compact_benchmark.py", "compact_stress.py",
+    "proofroute.py", "proofroute_benchmark.py"
 )
 CARD = """---
 language:
@@ -104,6 +105,13 @@ python -m orinth_clef.hf_benchmark --model . --fixture challenge_rules.jsonl
 python -m orinth_clef.hf_benchmark --model . --fixture holdout_rules_v1.jsonl \
   --prompt-style short_system
 ```
+
+An optional explicit-policy route is available through
+`orinth_clef.proofroute.decide(task, policy, fallback)`. This is
+a conventional symbolic fast path, **not a learned model capability**.
+It never infers rules from natural language and abstains if policy
+coverage or required state is missing. See the source repository's
+`docs/PHASE8-PROOFROUTE.md` for limitations.
 
 The optional `micro-head-experimental.safetensors` is a separate
 ~960 KiB experimental head. It still requires the full Qwen backbone

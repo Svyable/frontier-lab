@@ -213,6 +213,30 @@ and a reproducible diagnostic CLI:
 human gold and rights review are required before public publication.
 The artifact is MLX/Apple Silicon, not a Transformers/PyTorch model.
 
+## Phase 8 — ProofRoute: explicit verified policy fast path
+
+[Phase 8 research report](docs/PHASE8-PROOFROUTE.md). This
+**optional**, CPU-only path evaluates typed, externally supplied
+policy expressions against task state and returns complete decisions
+without model inference. Invalid policies fail closed; missing data
+abstains or invokes a separately provided validated neural fallback.
+
+On the **previously inspected** 32-case author-rule diagnostic
+(two repetitions), it achieved 64/64 complete matches with
+0.01321 ms median per-case time (including validation and compilation),
+versus 52/64 and 270.10 ms for DecisionLens. Hand-written Python
+rules achieved the same 64/64 at **0.00071 ms**, about 19x faster
+than ProofRoute. The ~20,000x rule-versus-neural difference is
+not a faster AI model and does not beat conventional rule engines. Human policy authoring,
+maintenance, cold start and model loading are excluded.
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.proofroute_benchmark --rounds 2
+~~~
+
+The path is included as optional source in the local Hugging Face-style
+MLX bundle, not substituted for the learned Qwen checkpoint.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
