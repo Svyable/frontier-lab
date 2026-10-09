@@ -25,6 +25,7 @@ class HFReleaseTests(unittest.TestCase):
         for name in SOURCE_FILES:
             (source / "orinth_clef" / name).write_text("# dummy\n")
         (source / "examples" / "challenge_rules.jsonl").write_text("{}\n")
+        (source / "examples" / "oracle_rules_v2.jsonl").write_text("{}\n")
         return source, model
 
     def test_metadata_bundle_integrity(self):
@@ -36,6 +37,8 @@ class HFReleaseTests(unittest.TestCase):
             self.assertFalse(result["weights_included"])
             self.assertFalse((out / "model.safetensors").exists())
             self.assertTrue((out / "README.md").exists())
+            self.assertTrue((out / "oracle_rules_v2.jsonl").exists())
+            self.assertTrue((out / "orinth_clef" / "oracle_benchmark.py").exists())
             self.assertTrue((out / "orinth_clef" / "hf_release.py").exists())
             self.assertEqual(verify(out), result)
 

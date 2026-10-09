@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from orinth_clef.oracle_benchmark import cases, verify_fixture, write_fixture
+from orinth_clef.oracle_benchmark import cases, diagnostic_gate, verify_fixture, write_fixture
 from orinth_clef.schema import SchemaError
 
 
@@ -31,6 +31,18 @@ class OracleBenchmarkTests(unittest.TestCase):
             p.write_text("".join(json.dumps(row) + "\n" for row in rows))
             with self.assertRaisesRegex(SchemaError, "disagreement"):
                 verify_fixture(p)
+
+    def test_diagnostic_gate_rejects_wrong_accepted_exits(self):
+        report = {"summary": {
+            "exit": {"exact": 40, "accepted_wrong": 24, "mean_seconds": 0.12},
+            "lens": {"exact": 55, "mean_seconds": 0.23}}}
+        outcome = diagnostic_gate(report)
+        self.assertFalse(outcome["passed"])
+        self.assertEqual(len(outcome["failures"]), 2)
+        report["summary"]["exit"].update({"exact": 55, "accepted_wrong": 0})
+        self.assertTrue(diagnostic_gate(report)["passed"])
+        del report["summary"]["exit"]["accepted_wrong"]
+        self.assertFalse(diagnostic_gate(report)["passed"])
 
     def test_reject_invalid_sizes(self):
         for count in (0, -1, 101, 1.0, True):

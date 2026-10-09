@@ -27,7 +27,7 @@ SOURCE_FILES = (
     "direct_classifier.py", "direct_benchmark.py",
     "compact_benchmark.py", "compact_stress.py",
     "proofroute.py", "proofroute_benchmark.py", "selective_cascade.py",
-    "early_exit.py", "early_exit_benchmark.py"
+    "early_exit.py", "early_exit_benchmark.py", "oracle_benchmark.py"
 )
 CARD = """---
 language:
@@ -153,6 +153,25 @@ and the early head together; it is not enabled by default.
 - All figures are local, small-sample, hardware- and task-specific.
   Full evidence and limitations: see `EVALUATION.md` and source repo.
 
+## Phase 11 executable-rule oracle evaluation
+
+The included `oracle_rules_v2.jsonl` contains 64 seeded,
+**author-programmed** tasks with independently executable rules
+and exact expected outputs. It was committed before model evaluation.
+It is **not** independently human-adjudicated general reasoning gold.
+
+On an Apple M4 (one warm pass), DecisionLens trie matched 55/64
+complete tasks at 234 ms median; the full micro-head and depth-24
+early-exit route each matched only 40/64, at 186 ms and 125 ms
+median respectively. The early exit **accepted all 64 tasks despite
+24 wrong decisions**. Its margin is not calibrated or trustworthy
+under distribution shift; do not enable it by default.
+
+A symbolic policy interpreter matched 64/64 at ~0.016 ms median,
+but it was supplied the answer-bearing executable rules, which
+the neural paths were not. This is a conventional policy engine,
+not a fair learned-model speed or accuracy comparison.
+
 ## Limitations and intended use
 
 Experimental text-only structured choice/boolean decisions. Do not use
@@ -201,9 +220,18 @@ mixed diagnostic, but showed no meaningful latency gain versus the
 copying trie in a 32-option stress test (~0.967s vs ~0.971s). It is
 experimental, not thread-safe, and not the recommended default.
 
+Phase 11: a 64-case seeded author-programmed executable-rule
+oracle, frozen before model evaluation, measured DecisionLens
+55/64 complete matches at 234 ms median, full micro-head 40/64
+at 186 ms, and depth-24 early exit 40/64 at 125 ms.
+**Early exit accepted all 64, including 24 wrong answers**.
+The symbolic interpreter scored 64/64 at 0.016 ms median
+because it received exact executable policies. This is not
+an equal-information learned-model comparison.
+
 The research source contains benchmark runners and author-labeled
-fixture. The package includes the fixture for reproducibility,
-**not as an independent test set**. Evaluators should supply fresh
+fixtures. The package includes fixtures for reproducibility,
+**not as independent human-gold test sets**. Evaluators should supply fresh
 held-out examples, human adjudication, confidence calibration,
 paired p50/p95, peak memory, throughput and licensing review.
 """
@@ -258,7 +286,8 @@ def export(source, model_dir, output, include_weights, head_path=None,
     (output / "EVALUATION.md").write_text(EVALUATION)
     (output / "requirements.txt").write_text("mlx-lm==0.32.0\n")
     (output / ".gitattributes").write_text("*.safetensors filter=lfs diff=lfs merge=lfs -text\n")
-    for fixture_name in ("challenge_rules.jsonl", "holdout_rules_v1.jsonl"):
+    for fixture_name in ("challenge_rules.jsonl", "holdout_rules_v1.jsonl",
+                         "oracle_rules_v2.jsonl"):
         fixture = source / "examples" / fixture_name
         if fixture.is_file():
             shutil.copy2(fixture, output / fixture_name)

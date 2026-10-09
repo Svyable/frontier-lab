@@ -131,10 +131,37 @@ def evaluate(path, model_dir, early_weights, final_weights, report_path):
             "p95_seconds": times[min(len(times) - 1, int(0.95 * len(times)))],
         }
     summary["exit"]["accepted"] = sum(r["exit"]["route"] == "early" for r in results)
+    summary["exit"]["accepted_wrong"] = sum(
+        r["exit"]["route"] == "early" and not r["exit"]["correct"] for r in results)
+    by_family = {}
+    for family in sorted({r["family"] for r in results}):
+        family_rows = [r for r in results if r["family"] == family]
+        by_family[family] = {
+            "count": len(family_rows),
+            **{name: sum(r[name]["correct"] for r in family_rows)
+               for name in ("symbolic", "exit", "full", "lens")},
+            "early_accepted": sum(r["exit"]["route"] == "early" for r in family_rows),
+        }
     return {"benchmark": "author_programmed_rule_oracle_not_independent_human_gold",
+            "family_breakdown": by_family,
             "fixture_sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
             "training_report_sha256": hashlib.sha256(Path(report_path).read_bytes()).hexdigest(),
             "summary": summary, "rows": results}
+
+
+def diagnostic_gate(report):
+    """Conservative local gate, NOT statistical confidence or release approval."""
+    summary = report["summary"]
+    exit_stats, lens = summary["exit"], summary["lens"]
+    failures = []
+    if exit_stats["exact"] < lens["exact"]:
+        failures.append("early exit loses exact correctness to DecisionLens")
+    if "accepted_wrong" not in exit_stats or exit_stats["accepted_wrong"] > 0:
+        failures.append("early exit accepted incorrect or unverified oracle decisions")
+    if exit_stats["mean_seconds"] >= lens["mean_seconds"]:
+        failures.append("early exit is not faster in mean latency")
+    return {"passed": not failures, "failures": failures,
+            "scope": "author_rule_diagnostic_only_not_public_release_approval"}
 
 
 def main():
@@ -151,16 +178,31 @@ def main():
     run.add_argument("--final-weights", type=Path, default=Path("runs/phase4/micro-head-24.safetensors"))
     run.add_argument("--training-report", type=Path, default=Path("runs/phase10/early24-target80.json"))
     run.add_argument("--output", type=Path, default=Path("runs/phase11/oracle_v2.json"))
+    gate = sub.add_parser("gate")
+    gate.add_argument("--report", type=Path, default=Path("runs/phase11/oracle_v2.json"))
     args = p.parse_args()
     if args.command == "generate":
         print(json.dumps({"sha256": write_fixture(args.output, args.seed, args.per_family),
                           "cases": len(verify_fixture(args.output))}))
+    elif args.command == "gate":
+        report = json.loads(args.report.read_text())
+        # Older reports may lack accepted_wrong; derive it from recorded rows.
+        if "accepted_wrong" not in report["summary"]["exit"]:
+            report["summary"]["exit"]["accepted_wrong"] = sum(
+                r["exit"]["route"] == "early" and not r["exit"]["correct"]
+                for r in report["rows"])
+        outcome = diagnostic_gate(report)
+        print(json.dumps(outcome, indent=2))
+        if not outcome["passed"]:
+            raise SystemExit(1)
     else:
         report = evaluate(args.fixture, args.model, args.early_weights,
                           args.final_weights, args.training_report)
+        report["diagnostic_gate"] = diagnostic_gate(report)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report["summary"], indent=2))
+        print(json.dumps(report["diagnostic_gate"], indent=2))
 
 
 if __name__ == "__main__":
