@@ -97,6 +97,33 @@ The evaluator supports `--no-adapter` for a true base-model control. Neither
 teacher agreement nor comparison with synthetic construction intents constitutes
 independently validated accuracy.
 
+## Phase 3 — DecisionLens: zero-autoregressive-token decision path
+
+See [DecisionLens measured M4 report](docs/DECISIONLENS-M4.md). The runtime
+scores allowed **single-token** choice IDs and JSON booleans directly from
+Qwen3-4B logits, reusing an MLX KV cache across fields. It never generates
+JSON tokens autoregressively; the runtime assembles strictly typed output.
+
+On 24 synthetic held-out scenarios, cached DecisionLens with the 60-step
+adapter achieved 24/24 schema validity and 16/24 teacher pseudo-label
+matches at 0.2823s median per case, compared with 0.4855s for ordinary
+generation (1.72x median latency improvement). A locally fused 4-bit
+candidate reached 17/24 matches at 0.2789s. 3-bit variants degraded badly;
+see report. No general SOTA or independent accuracy claim.
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.decision_lens \
+  --model models/qwen3-4b-60iter-4bit --no-adapter \
+  --data data/mlx_120 --output runs/phase3/decision-lens-fused4bit.json
+python3 -m orinth_clef.package_lens
+python3 -m orinth_clef.package_lens --verify
+~~~
+
+The ~1 KiB **thin manifest** is a content-addressed overlay referencing
+**separately installed ~2.1 GiB model weights**; it is not a standalone
+1 KiB model. Normalized candidate token scores are not calibrated
+probabilities. Arbitrary multi-token choice IDs are not yet supported.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
