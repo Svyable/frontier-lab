@@ -81,11 +81,11 @@ def validate_response(request: dict, response: object) -> dict:
         raise SchemaError("response question IDs differ from request")
     for qid, q in request["questions"].items():
         ans = answers[qid]
+        if not isinstance(ans, Mapping) or ans.get("type") != q["type"]:
+            raise SchemaError(f"{qid}: answer type must match question type")
         if q["type"] == "noul":
-            _probability(ans, f"{qid} true probability")
+            _probability(ans.get("noul"), f"{qid} true probability")
             continue
-        if not isinstance(ans, Mapping):
-            raise SchemaError(f"{qid}: choice answer must be an object")
         probabilities = ans.get("probabilities")
         expected = set(q["criteria"])
         if not isinstance(probabilities, Mapping) or set(probabilities) != expected:
@@ -110,5 +110,5 @@ def pseudo_labels(request: dict, response: dict) -> dict:
             # Preserve the teacher's selected option even when tied.
             result[qid] = answer["choice"]
         else:
-            result[qid] = answer >= 0.5
+            result[qid] = answer["noul"] >= 0.5
     return result

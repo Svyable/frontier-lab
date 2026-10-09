@@ -15,8 +15,8 @@ REQUEST = {
 RESPONSE = {
     "model": "clef-flash",
     "answers": {
-        "team": {"choice": "technical", "confidence": 0.9, "probabilities": {"billing": 0.1, "technical": 0.9}},
-        "urgent": 0.8,
+        "team": {"type": "choice", "choice": "technical", "confidence": 0.9, "probabilities": {"billing": 0.1, "technical": 0.9}},
+        "urgent": {"type": "noul", "noul": 0.8},
     },
     "usage": {"latency_ms": 100},
 }
@@ -58,9 +58,15 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(SchemaError, "question IDs"):
             validate_response(REQUEST, {"answers": {"urgent": 0.5}})
 
+    def test_reject_mismatched_answer_type(self):
+        response = copy.deepcopy(RESPONSE)
+        response["answers"]["urgent"]["type"] = "choice"
+        with self.assertRaisesRegex(SchemaError, "answer type"):
+            validate_response(REQUEST, response)
+
     def test_reject_boolean_as_probability(self):
         response = copy.deepcopy(RESPONSE)
-        response["answers"]["urgent"] = True
+        response["answers"]["urgent"]["noul"] = True
         with self.assertRaisesRegex(SchemaError, "number"):
             validate_response(REQUEST, response)
 
