@@ -70,6 +70,19 @@ mlx_lm.lora --model mlx-community/Qwen3-4B-4bit --train --data data/mlx \
 
 Monitor real memory pressure with memory_pressure -Q and vm_stat. Never call a successful 10-iteration training run a quality result.
 
+## Observed Apple M4 results and student typed-output evaluator
+
+See [docs/M4-BOOTSTRAP-RESULTS.md](docs/M4-BOOTSTRAP-RESULTS.md) for the measured 2026-10-09 run.
+The 12-case teacher capture and 10-iteration student LoRA smoke test both ran locally, but **0 of 2 held-out outputs passed strict decision schema**. This checkpoint is not a validated Clef replacement.
+
+After training, run:
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.eval_student --splits valid test
+~~~
+
+The local ignored report is written to `runs/qwen3-4b-smoke/eval.json`. It explicitly distinguishes schema validity and **teacher pseudo-label** agreement from independent task accuracy. Strict parsing never repairs malformed model output.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
