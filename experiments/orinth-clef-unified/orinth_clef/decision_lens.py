@@ -56,25 +56,38 @@ def select_from_logits(candidate_ids: dict, scores: list[float]) -> tuple:
     return labels[winner], {str(labels[i]): weights[i] / total for i in range(len(labels))}
 
 
-def decide(model, tokenizer, task: dict, *, sequence_scorer="reference") -> tuple[dict, dict]:
+def decide(model, tokenizer, task: dict, *, sequence_scorer="reference",
+           prompt_style="baseline") -> tuple[dict, dict]:
     """Select typed candidates with KV-cached, constrained token scoring."""
     import mlx.core as mx
     from mlx_lm.models.cache import make_prompt_cache
     from .candidate_sequences import candidate_sequences, score_sequences
-    if sequence_scorer not in ("reference", "trie"):
+    if sequence_scorer not in ("reference", "trie", "rollback"):
         raise SchemaError("unsupported sequence scorer")
     if sequence_scorer == "trie":
         from .prefix_trie import score_sequences_trie
+    elif sequence_scorer == "rollback":
+        from .rollback_trie import score_sequences_rollback
 
+    if prompt_style not in ("baseline", "compact", "compact_json", "short_system"):
+        raise SchemaError("unsupported prompt style")
     validate_request({"model": "clef-flash", **task})
     questions = task["questions"]
-    messages = [
-        {"role": "system", "content": (
+    if prompt_style in ("baseline", "compact_json"):
+        system = (
             "Return only compact JSON with a single 'decisions' object. "
             "For 'choice' questions return exactly one allowed option ID; "
             "for 'noul' questions return a JSON boolean. Do not add explanation."
-        )},
-        {"role": "user", "content": json.dumps(task, ensure_ascii=False, sort_keys=True)},
+        )
+    else:
+        system = 'Return JSON {"decisions":{...}}. choice: allowed ID; noul: boolean. No prose.'
+    content = json.dumps(
+        task, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":") if prompt_style in ("compact", "compact_json") else None
+    )
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": content},
     ]
     prompt = tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
@@ -99,9 +112,14 @@ def decide(model, tokenizer, task: dict, *, sequence_scorer="reference") -> tupl
             raw_scores = [float(logits[ids[0]].item()) for ids in sequences.values()]
             answer, distribution = select_from_logits(sequences, raw_scores)
         else:
-            # Multi-token options are scored on separate copies of the same
-            # prefix cache; only the chosen continuation advances the base.
-            scorer = score_sequences if sequence_scorer == "reference" else score_sequences_trie
+            # Multi-token options use the selected experimental scorer.
+            # Only the chosen continuation advances the original prefix.
+            if sequence_scorer == "reference":
+                scorer = score_sequences
+            elif sequence_scorer == "trie":
+                scorer = score_sequences_trie
+            else:
+                scorer = score_sequences_rollback
             answer, distribution = scorer(model, cache, logits, sequences)
         answers[qid] = answer
         score_distributions[qid] = distribution
@@ -118,7 +136,8 @@ def decide(model, tokenizer, task: dict, *, sequence_scorer="reference") -> tupl
 
 def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
              splits: tuple[str, ...] = ("valid", "test"),
-             sequence_scorer: str = "reference") -> dict:
+             sequence_scorer: str = "reference",
+             prompt_style: str = "baseline") -> dict:
     from mlx_lm import load
 
     cases = []
@@ -136,7 +155,10 @@ def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
     for split, index, task, expected in cases:
         start = time.perf_counter()
         try:
-            decisions, distributions = decide(model, tokenizer, task, sequence_scorer=sequence_scorer)
+            decisions, distributions = decide(
+                model, tokenizer, task, sequence_scorer=sequence_scorer,
+                prompt_style=prompt_style
+            )
             valid, error = True, None
         except SchemaError as exc:
             decisions, distributions, valid, error = None, None, False, str(exc)
@@ -152,6 +174,7 @@ def evaluate(*, model_path: str, adapter_path: str | None, data_dir: Path,
         "evaluation_kind": "decision_lens_token_logit_selection_not_calibrated_not_accuracy",
         "model_path": model_path, "adapter_path": adapter_path,
         "sequence_scorer": sequence_scorer,
+        "prompt_style": prompt_style,
         "splits": list(splits), "count": len(observations),
         "schema_valid_count": sum(x["schema_valid"] for x in observations),
         "teacher_pseudolabel_agreement_count": sum(x["teacher_pseudolabel_exact_match"] for x in observations),
@@ -165,14 +188,16 @@ def main() -> None:
     p.add_argument("--model", default="models/qwen3-4b-4bit")
     p.add_argument("--adapter", default="runs/phase2/qwen3-4b-60iter")
     p.add_argument("--no-adapter", action="store_true")
-    p.add_argument("--sequence-scorer", choices=("reference", "trie"), default="reference")
+    p.add_argument("--sequence-scorer", choices=("reference", "trie", "rollback"), default="reference")
+    p.add_argument("--prompt-style", choices=("baseline", "compact", "compact_json", "short_system"), default="baseline")
     p.add_argument("--data", type=Path, default=Path("data/mlx_120"))
     p.add_argument("--splits", nargs="+", choices=["valid", "test", "train"], default=["valid", "test"])
     p.add_argument("--output", type=Path, default=Path("runs/phase3/decision-lens.json"))
     args = p.parse_args()
     report = evaluate(model_path=args.model, adapter_path=None if args.no_adapter else args.adapter,
                       data_dir=args.data, splits=tuple(args.splits),
-                      sequence_scorer=args.sequence_scorer)
+                      sequence_scorer=args.sequence_scorer,
+                      prompt_style=args.prompt_style)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "observations"}, indent=2))

@@ -181,6 +181,38 @@ default pending broader validation.
   --sequence-scorer trie --output runs/phase6/teacher-regression-trie.json
 ~~~
 
+## Phase 7 — Research-grade MLX model bundle (local, unpublished)
+
+See [Phase 7 experiment and release report](docs/PHASE7-RESEARCH-RELEASE.md).
+Two additional decision runtimes were tested on the 24 author-labeled
+rule cases (two paired rounds). The trie retained **42/48** complete
+matches at ~0.29s median. Compact aliasing achieved 36/48 at 0.312s;
+a per-question direct classifier achieved 30/48 at 0.249s.
+Neither is a quality-and-speed improvement; both remain experiments.
+A separate short-system-prompt variant **did** improve both metrics
+on two author-created rule diagnostics: 44/48 vs 42/48 exact at
+0.249s vs 0.288s median on the original suite, and 52/64 vs
+50/64 at 0.263s vs 0.305s on a newly written 32-case suite.
+This is a promising but small opt-in Pareto improvement, **not**
+independent accuracy or general SOTA. Experimental KV rollback
+showed no meaningful speedup over the copying trie.
+
+Build a local Hugging Face-style MLX release with actual weights,
+a runnable inference package, SHA-256 manifest, provenance, model card,
+and a reproducible diagnostic CLI:
+
+~~~bash
+.venv-student/bin/python -m orinth_clef.hf_release export \
+  --include-weights --head runs/phase4/micro-head-24.safetensors \
+  --output runs/phase7/hf-weighted-v2
+.venv-student/bin/python -m orinth_clef.hf_release verify \
+  --directory runs/phase7/hf-weighted-v2
+~~~
+
+**No automatic upload or model-license assertion.** Independent
+human gold and rights review are required before public publication.
+The artifact is MLX/Apple Silicon, not a Transformers/PyTorch model.
+
 ## Release gates
 
 1. Real SystemOne response contains all requested choice probabilities and noul probabilities.
