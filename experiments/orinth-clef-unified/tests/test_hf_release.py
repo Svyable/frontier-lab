@@ -76,6 +76,35 @@ class HFReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(SchemaError, "invalid manifest path"):
                 verify(out)
 
+    def test_early_exit_head_requires_valid_metadata_and_both_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, model = self.make_source(root)
+            head = root / "early.safetensors"
+            head.write_bytes(b"fake-weights-for-manifest-test")
+            report = root / "early.json"
+            data = {
+                "depth": 24, "total_layers": 36, "rank": 32, "epochs": 24,
+                "threshold": 0.9,
+                "threshold_selection": "validation_only_empirical_not_calibrated",
+                "target_validation_agreement": 0.8,
+                "dataset_sha256": "abc",
+                "evaluation_kind": "pseudo_labels_not_gold",
+            }
+            report.write_text(json.dumps(data))
+            with self.assertRaisesRegex(SchemaError, "together"):
+                export(source, model, root / "missing", False, early_head_path=head)
+            result = export(source, model, root / "valid", False,
+                            early_head_path=head, early_report_path=report)
+            self.assertEqual(result["files_verified"], verify(root / "valid")["files_verified"])
+            self.assertTrue((root / "valid" / "early-head-experimental.safetensors").exists())
+            self.assertEqual(json.loads((root / "valid" / "early-exit-experimental.json").read_text())["depth"], 24)
+            data["threshold"] = float("nan")
+            report.write_text(json.dumps(data))
+            with self.assertRaisesRegex(SchemaError, "invalid early"):
+                export(source, model, root / "invalid", False,
+                       early_head_path=head, early_report_path=report)
+
     def test_refuse_nonempty_output(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
