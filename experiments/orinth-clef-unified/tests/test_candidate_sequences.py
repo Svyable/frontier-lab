@@ -36,6 +36,15 @@ class SequenceContractTests(unittest.TestCase):
                 "type": "choice", "criteria": {"alpha": "A", "beta": "B"}
             })
 
+    def test_json_escape_choice_ids_fail_closed(self):
+        for unsafe in ('quoted"key', "back\\slash", "line\\nbreak"):
+            with self.subTest(unsafe=unsafe):
+                with self.assertRaisesRegex(SchemaError, "JSON escaping"):
+                    candidate_sequences(Tokenizer(), {
+                        "type": "choice",
+                        "criteria": {unsafe: "Unsafe", "safe": "Safe"}
+                    })
+
     def test_schema_limit_fifty_options(self):
         question = {"type": "choice", "criteria": {
             f"option_{i}": f"Option {i}" for i in range(50)

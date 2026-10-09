@@ -4,6 +4,7 @@ This supports multi-token choice IDs without unconstrained JSON generation.
 Sequence *mean* log-probability is a heuristic; not a calibrated event probability.
 """
 import copy
+import json
 import math
 
 from .decision_lens import candidate_values, select_from_logits
@@ -14,6 +15,8 @@ def candidate_sequences(tokenizer, question):
     result = {}
     for value in candidate_values(question):
         spelling = value if isinstance(value, str) else ("true" if value else "false")
+        if isinstance(value, str) and json.dumps(spelling, ensure_ascii=False)[1:-1] != spelling:
+            raise SchemaError("choice ID requires JSON escaping; unsupported in constrained scoring")
         ids = tokenizer.encode(spelling, add_special_tokens=False)
         if not ids:
             raise SchemaError(f"empty candidate tokenization: {spelling!r}")
