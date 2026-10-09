@@ -43,7 +43,7 @@ class TeacherTests(unittest.TestCase):
         try:
             client = LocalTeacher(f"http://127.0.0.1:{server.server_port}")
             self.assertEqual(client.health()["status"], "ok")
-            self.assertEqual(client.predict(REQUEST)["answers"]["urgent"], 0.8)
+            self.assertEqual(client.predict(REQUEST)["answers"]["urgent"]["noul"], 0.8)
             self.assertIs(server.last_request["truncate"], False)
         finally:
             server.shutdown()

@@ -26,7 +26,7 @@ class DataTests(unittest.TestCase):
         row = fake_rows(1)[0]
         self.assertEqual(row["response"]["answers"]["team"]["probabilities"]["technical"], .9)
         self.assertEqual(row["teacher_revision"], "0123456789abcdef")
-        self.assertEqual(row["pseudo_labels"]["urgent"], True)
+        self.assertIs(row["pseudo_labels"]["urgent"], True)
 
     def test_requires_exact_revision(self):
         with self.assertRaisesRegex(ValueError, "revision"):
