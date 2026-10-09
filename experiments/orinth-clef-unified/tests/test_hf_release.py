@@ -50,6 +50,20 @@ class HFReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(SchemaError, "modified"):
                 verify(out)
 
+    def test_verify_after_python_import_and_reject_extra_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, model = self.make_source(root)
+            out = root / "export"
+            export(source, model, out, False)
+            cache = out / "orinth_clef" / "__pycache__"
+            cache.mkdir()
+            (cache / "decision_lens.cpython-312.pyc").write_bytes(b"generated")
+            self.assertFalse(verify(out)["weights_included"])
+            (out / "unexpected.py").write_text("unexpected")
+            with self.assertRaisesRegex(SchemaError, "unexpected"):
+                verify(out)
+
     def test_manifest_path_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
