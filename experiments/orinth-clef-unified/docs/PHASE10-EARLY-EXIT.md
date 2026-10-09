@@ -79,6 +79,15 @@ weights and minimal configuration, plus the full MLX model and final
 micro-head. All are needed for this experimental route. The raw
 teacher training data is **not** distributed.
 
+**Packaged-model smoke test:** the 45-file checksum-verified bundle
+loaded all three components and executed the depth-24 early-exit
+route. For an out-of-suite single Boolean task with
+`state.severity=4` and the instruction `True iff severity >= 4`,
+the early head returned **false**, which is **incorrect**. The
+manifest still verified after inference. This one case is not an
+accuracy estimate, but it directly demonstrates why this optional
+head must not be promoted to a reliable default.
+
 ## Research gates
 
 1. A new, independently adjudicated dataset of diverse multi-question
