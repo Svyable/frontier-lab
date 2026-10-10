@@ -109,7 +109,9 @@ Before using this result in any architecture, keep these in mind:
 | L5 | **Random + low-rank core.** Freeze a random bulk J at the theory-chosen g and train only a low-rank component plus a readout (reservoir-style, refs [13–15]). | Yes | Large reduction in trainable parameters at matched quality on small tasks. | High. Reservoirs tend to underperform trained nets on language. Keep it as an efficiency/edge-device bet. |
 | L6 | **Lyapunov halting for looped reasoning.** Use the local expansion rate (a short-window F(s) or λ₁ estimate) as an adaptive-compute stop signal. Ref [49] reports transient chaos on harder tasks. | Mostly | Accuracy vs. loop-count Pareto improves over fixed-T or learned-halting baselines. | High. Speculative, and the estimator may cost more than the loop iterations it saves. |
 
-## 7. Working architecture hypothesis: "edge-loop" (name TBD)
+## 7. Working architecture hypothesis
+
+> Superseded by the first-principles design in [`edge-loop-design.md`](edge-loop-design.md), which replaces the g-based init with norm-gain / injection dials (weight scale is cancelled by pre-norm).: "edge-loop" (name TBD)
 
 *Hypothesis, not a result. Every claim here is UNVERIFIED until §9 gates pass.*
 
