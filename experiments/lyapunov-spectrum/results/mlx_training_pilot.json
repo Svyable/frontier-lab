@@ -1,0 +1,218 @@
+{
+  "backend": "MLX Metal Apple Silicon",
+  "task": "3-pair binary key lookup",
+  "training_examples": "fresh synthetic samples each step; disjoint test RNG",
+  "steps": 400,
+  "batch": 48,
+  "width": 48,
+  "loops": 8,
+  "delta": 0.5,
+  "lr": 0.002,
+  "seeds": [
+    2026,
+    711
+  ],
+  "test_examples": 1024,
+  "conditions": [
+    {
+      "injection": 0.3,
+      "seed": 2026,
+      "loss_history": [
+        [
+          1,
+          0.70905
+        ],
+        [
+          60,
+          0.72821
+        ],
+        [
+          120,
+          0.7208
+        ],
+        [
+          180,
+          0.69008
+        ],
+        [
+          240,
+          0.69258
+        ],
+        [
+          300,
+          0.69238
+        ],
+        [
+          360,
+          0.69293
+        ]
+      ],
+      "test_8_loops": {
+        "accuracy": 0.48438,
+        "cross_entropy": 0.69346
+      },
+      "test_16_loops": {
+        "accuracy": 0.48438,
+        "cross_entropy": 0.69347
+      },
+      "probe": {
+        "mean_tangent_rate_after_8": -1.30596,
+        "settling_relative_step_8": 0.005313,
+        "settling_relative_step_28": 0.0,
+        "first_step_under_1e-3": 11
+      },
+      "runtime_sec": 3.7,
+      "checkpoint_local": "experiments/lyapunov-spectrum/checkpoints/loop_s400_k0.3_seed2026.safetensors"
+    },
+    {
+      "injection": 0.3,
+      "seed": 711,
+      "loss_history": [
+        [
+          1,
+          0.73363
+        ],
+        [
+          60,
+          0.69259
+        ],
+        [
+          120,
+          0.71326
+        ],
+        [
+          180,
+          0.69747
+        ],
+        [
+          240,
+          0.69452
+        ],
+        [
+          300,
+          0.69149
+        ],
+        [
+          360,
+          0.68154
+        ]
+      ],
+      "test_8_loops": {
+        "accuracy": 0.51562,
+        "cross_entropy": 0.69278
+      },
+      "test_16_loops": {
+        "accuracy": 0.51562,
+        "cross_entropy": 0.69278
+      },
+      "probe": {
+        "mean_tangent_rate_after_8": -1.16178,
+        "settling_relative_step_8": 0.006444,
+        "settling_relative_step_28": 0.0,
+        "first_step_under_1e-3": 11
+      },
+      "runtime_sec": 3.2,
+      "checkpoint_local": "experiments/lyapunov-spectrum/checkpoints/loop_s400_k0.3_seed711.safetensors"
+    },
+    {
+      "injection": 3.0,
+      "seed": 2026,
+      "loss_history": [
+        [
+          1,
+          0.71026
+        ],
+        [
+          60,
+          0.67536
+        ],
+        [
+          120,
+          0.72238
+        ],
+        [
+          180,
+          0.68972
+        ],
+        [
+          240,
+          0.69455
+        ],
+        [
+          300,
+          0.69181
+        ],
+        [
+          360,
+          0.69183
+        ]
+      ],
+      "test_8_loops": {
+        "accuracy": 0.48438,
+        "cross_entropy": 0.69531
+      },
+      "test_16_loops": {
+        "accuracy": 0.48438,
+        "cross_entropy": 0.69552
+      },
+      "probe": {
+        "mean_tangent_rate_after_8": -1.28502,
+        "settling_relative_step_8": 0.026453,
+        "settling_relative_step_28": 0.0,
+        "first_step_under_1e-3": 14
+      },
+      "runtime_sec": 3.4,
+      "checkpoint_local": "experiments/lyapunov-spectrum/checkpoints/loop_s400_k3_seed2026.safetensors"
+    },
+    {
+      "injection": 3.0,
+      "seed": 711,
+      "loss_history": [
+        [
+          1,
+          0.71941
+        ],
+        [
+          60,
+          0.60053
+        ],
+        [
+          120,
+          0.54536
+        ],
+        [
+          180,
+          0.48875
+        ],
+        [
+          240,
+          0.49917
+        ],
+        [
+          300,
+          0.37728
+        ],
+        [
+          360,
+          0.24732
+        ]
+      ],
+      "test_8_loops": {
+        "accuracy": 0.84277,
+        "cross_entropy": 0.22579
+      },
+      "test_16_loops": {
+        "accuracy": 0.84961,
+        "cross_entropy": 0.2253
+      },
+      "probe": {
+        "mean_tangent_rate_after_8": -0.63008,
+        "settling_relative_step_8": 0.095797,
+        "settling_relative_step_28": 0.004042,
+        "first_step_under_1e-3": null
+      },
+      "runtime_sec": 3.4,
+      "checkpoint_local": "experiments/lyapunov-spectrum/checkpoints/loop_s400_k3_seed711.safetensors"
+    }
+  ]
+}

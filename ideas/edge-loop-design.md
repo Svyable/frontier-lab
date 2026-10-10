@@ -132,3 +132,17 @@ This trade-off is the main design decision. It was invisible before λ₁ was me
 3. Add top-k QR exponents to report D_KY/N and h_KS/N for the looped block, not just λ₁.
 4. Literature check on the novelty claim in §5.
 5. If 1–2 hold up: write `writeups/edge-loop.md` and propose an HF Space "spectrum card" calculator. That needs HF auth and your OK to publish as Svyable.
+
+
+## 7. Update after training (2026-10-10)
+
+The original M1–M5 numbers above are **untrained**-network observations.
+A subsequent 15-model MLX experiment on an Apple M4 Pro tested injection
+strength *after supervised learning*. Mean eight-loop test accuracy on a tiny
+synthetic binary key–value retrieval task was 51.9% (κ=0.3), 57.2% (κ=1),
+and 77.6% (κ=3), with large seed variation. However, additional loops
+reduced accuracy in several strong runs, and rapid convergence sometimes
+indicated a collapsed chance-level model. **Do not treat the earlier
+halting-first recipe as validated for trained transformers.** See
+[the first training report](../writeups/edge-loop-first-training.md)
+and its caveats; neither result applies directly to language modeling.
