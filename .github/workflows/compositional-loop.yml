@@ -1,0 +1,33 @@
+name: Compositional loop dataset checks
+
+on:
+  pull_request:
+    paths:
+      - "experiments/lyapunov-spectrum/compositional_data.py"
+      - "experiments/lyapunov-spectrum/test_compositional_data.py"
+      - "experiments/lyapunov-spectrum/mlx_compositional.py"
+      - "experiments/lyapunov-spectrum/test_mlx_compositional.py"
+      - ".github/workflows/compositional-loop.yml"
+  push:
+    branches: [main]
+    paths:
+      - "experiments/lyapunov-spectrum/compositional_data.py"
+      - "experiments/lyapunov-spectrum/test_compositional_data.py"
+      - "experiments/lyapunov-spectrum/mlx_compositional.py"
+      - "experiments/lyapunov-spectrum/test_mlx_compositional.py"
+
+jobs:
+  data-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install numpy==2.3.5
+      - name: Syntax and split checks (no MLX on Linux)
+        run: |
+          cd experiments/lyapunov-spectrum
+          python -m py_compile compositional_data.py test_compositional_data.py mlx_compositional.py test_mlx_compositional.py
+          python -m unittest -v test_compositional_data
