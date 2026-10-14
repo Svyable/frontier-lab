@@ -46,3 +46,56 @@ Research constraints: the tiny task has just 144 unique input/label
 combinations; training examples repeat combinations. Every claim should
 state the 5-seed spread and failure cases. Small near-zero settling differences
 are at machine precision and do not establish a globally negative exponent.
+
+## Group-held-out compositional follow-up (PR #22; training pending)
+
+The original three-pair pilot could reuse the same 144 examples. The follow-up
+`compositional_data.py` instead samples **four distinct keys from eight**,
+assigns each key a binary value, shuffles the four key/value pairs, and asks for
+one queried value. Its deterministic BLAKE2s hash partitions by the **entire
+canonical key-to-value mapping**: every permutation and queried key of a given
+mapping are excluded from the other split. There are 1,120 possible mappings,
+and the split currently yields 895 train and 225 test mappings. **This remains
+a synthetic finite-domain transfer test, not a language-model benchmark.**
+
+`mlx_compositional.py` trains 3 alternatives at the same 8-block execution
+depth: tied weak injection (0.3), tied strong injection (3.0), and an **untied**
+8-block transformer (injection 3.0). The untied baseline has more parameters
+and is **compute/depth matched, not parameter matched**. It reports mapping-
+disjoint test accuracy, training-domain accuracy, evaluation at variable loop
+depths, a finite-time JVP probe on multiple inputs, and whether fixed thresholds
+halt before a correct prediction is reached.
+
+CPU-only dataset tests and syntax checks (can run anywhere):
+
+```sh
+cd experiments/lyapunov-spectrum
+python -m unittest -v test_compositional_data
+python -m py_compile compositional_data.py mlx_compositional.py test_mlx_compositional.py
+```
+
+Once the MacBook is online, use its existing MLX virtual environment from
+the **repository root** and run:
+
+```sh
+experiments/orinth-clef-unified/.venv-student/bin/python \
+  experiments/lyapunov-spectrum/test_mlx_compositional.py
+
+# Smoke before sustained training:
+experiments/orinth-clef-unified/.venv-student/bin/python \
+  experiments/lyapunov-spectrum/mlx_compositional.py \
+  --steps 2 --batch 8 --seeds 42 --variants tied_strong untied_strong \
+  --test-size 64 --probe-inputs 2 --output /tmp/compositional-smoke.json
+
+# Three conditions × three seeds; only after successful smoke:
+experiments/orinth-clef-unified/.venv-student/bin/python \
+  experiments/lyapunov-spectrum/mlx_compositional.py \
+  --steps 1200 --batch 64 --seeds 2026 711 42 \
+  --output experiments/lyapunov-spectrum/results/compositional_mlx.json
+```
+
+The runner writes results after each completed condition so interrupted runs
+leave a partial record marked `in_progress`. It does **not** save checkpoints
+unless `--save-checkpoints` is explicitly passed. No MLX training results have
+been recorded for this follow-up yet. See
+`writeups/edge-loop-compositional-protocol.md` for decision criteria.
